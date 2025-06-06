@@ -1,52 +1,54 @@
 import streamlit as st
 import wikipedia
+import openai
+import os
 
-# App Title and Intro
+# Set your OpenAI API Key here
+openai.api_key = st.secrets["OPENAI_API_KEY"] if "OPENAI_API_KEY" in st.secrets else "your-api-key-here"
+
 st.set_page_config(page_title="AutoGuru", page_icon="🚗")
-st.title("🏍️ AutoGuru – Your Ultimate Automotive AI Assistant")
-st.write("Ask me anything about cars and bikes – specs, history, comparisons, or maintenance!")
+st.title("🏍️ AutoGuru – Ask Me Anything!")
 
-# Sidebar with Suggestions
+st.write("I'm your AI assistant for cars, bikes, and anything else you'd like to know.")
+
+# Sidebar with example questions
 with st.sidebar:
-    st.subheader("💡 Sample Questions")
-    st.markdown("- What is ABS in bikes?")
-    st.markdown("- Compare Honda Activa and TVS Jupiter")
-    st.markdown("- Tell me about electric cars")
-    st.markdown("- What engine does Royal Enfield use?")
-    st.markdown("- What is a hybrid car?")
+    st.subheader("💡 Try asking:")
+    st.markdown("- What is a turbocharger?")
+    st.markdown("- How does ABS work?")
+    st.markdown("- Who invented the motorcycle?")
+    st.markdown("- How to boost mileage of a bike?")
+    st.markdown("- What is Python used for?")
 
-# Input Area
-user_question = st.text_input("🔍 Enter your automotive question:")
+# Question input
+user_input = st.text_input("🔍 Ask your question:")
 
-# Display Search Result
-if user_question:
-    with st.spinner("🔧 AutoGuru is fetching your answer..."):
-        try:
-            summary = wikipedia.summary(user_question, sentences=3)
-            with st.expander("✅ Answer from AutoGuru"):
-                st.write(summary)
-        except wikipedia.exceptions.DisambiguationError as e:
-            st.warning("🛑 Your question is too broad. Try one of these topics:")
-            for option in e.options[:5]:
-                st.write("•", option)
-        except wikipedia.exceptions.PageError:
-            st.error("❌ Sorry, I couldn't find anything. Try rephrasing your question.")
-        except Exception as e:
-            st.error("⚠️ Something went wrong. Please try again later.")
+# Ask GPT (OpenAI)
+def ask_gpt(question):
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",  # or "gpt-4" if you have access
+            messages=[
+                {"role": "system", "content": "You are AutoGuru, an expert AI assistant in automobiles and general knowledge."},
+                {"role": "user", "content": question}
+            ]
+        )
+        return response['choices'][0]['message']['content'].strip()
+    except Exception as e:
+        return f"Error: {e}"
 
-# History
-if "history" not in st.session_state:
-    st.session_state.history = []
+# Try Wikipedia first
+def ask_wikipedia(question):
+    try:
+        return wikipedia.summary(question, sentences=3)
+    except:
+        return None
 
-if user_question and user_question not in st.session_state.history:
-    st.session_state.history.append(user_question)
-
-# Display History
-if st.session_state.history:
-    st.subheader("🕘 Your Questions")
-    for q in st.session_state.history[::-1]:
-        st.markdown(f"• {q}")
-
-# Footer
-st.markdown("---")
-st.caption("Built with ❤️ using Streamlit and Wikipedia | @AutoGuru")
+# Answer Logic
+if user_input:
+    with st.spinner("Thinking..."):
+        answer = ask_wikipedia(user_input)
+        if not answer:
+            answer = ask_gpt(user_input)
+        st.success("✅ Answer:")
+        st.write(answer)
